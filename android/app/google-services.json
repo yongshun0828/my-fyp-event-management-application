@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1045321846037",
+    "project_id": "tarumt-event-management-app",
+    "storage_bucket": "tarumt-event-management-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1045321846037:android:22e695e92dea64b039ed1c",
+        "android_client_info": {
+          "package_name": "com.example.tarumt_event_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAdGNhBjNO_QXQ_ZcOlmIbjthBGktmAE6U"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
