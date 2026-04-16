@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:intl/intl.dart';
+import 'package:latlong2/latlong.dart' as latlng;
 
 class MapPage extends StatefulWidget {
   const MapPage({super.key});
@@ -12,11 +13,13 @@ class MapPage extends StatefulWidget {
 
 class _MapPageState extends State<MapPage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final Set<Marker> _markers = {};
+  final List<Marker> _markers = [];
   String? _selectedLocation;
   List<Map<String, dynamic>> _eventList = [];
-  GoogleMapController? _mapController;
+  final MapController _mapController = MapController();
   bool _isLoading = false;
+  static final latlng.LatLng _initialCenter =
+      latlng.LatLng(3.2163834, 101.7277707);
 
   // Predefined Locations with descriptions
   final List<Map<String, dynamic>> _defaultLocations = [
@@ -65,63 +68,41 @@ class _MapPageState extends State<MapPage> {
   }
 
   void _addDefaultLocations() {
-    setState(() {
-      _markers.clear();
-      for (var location in _defaultLocations) {
-        _markers.add(
-          Marker(
-            markerId: MarkerId(location["name"]),
-            position: LatLng(location["lat"], location["lng"]),
-            infoWindow: InfoWindow(
-              title: location["name"],
-              snippet: location["description"],
-            ),
-            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
-          ),
-        );
-      }
-    });
+    _markers.clear();
+    for (var location in _defaultLocations) {
+      _markers.add(_buildMarker(
+        point: latlng.LatLng(location["lat"], location["lng"]),
+        color: Colors.blue,
+        title: location["name"],
+        snippet: location["description"],
+      ));
+    }
   }
 
   void _addFilteredLocationMarker() {
-    setState(() {
-      _markers.clear();
-      if (_selectedLocation != null) {
-        final location = _defaultLocations.firstWhere(
-          (loc) => loc["name"] == _selectedLocation,
-          orElse: () => {},
-        );
+    _markers.clear();
+    if (_selectedLocation != null) {
+      final location = _defaultLocations.firstWhere(
+        (loc) => loc["name"] == _selectedLocation,
+        orElse: () => {},
+      );
 
-        if (location.isNotEmpty) {
-          _markers.add(
-            Marker(
-              markerId: MarkerId(location["name"]),
-              position: LatLng(location["lat"], location["lng"]),
-              infoWindow: InfoWindow(title: location["name"]),
-            ),
-          );
+      if (location.isNotEmpty) {
+        _markers.add(_buildMarker(
+          point: latlng.LatLng(location["lat"], location["lng"]),
+          color: Colors.blue,
+          title: location["name"],
+        ));
 
-          _mapController?.animateCamera(
-            CameraUpdate.newCameraPosition(
-              CameraPosition(
-                target: LatLng(location["lat"], location["lng"]),
-                zoom: 19,
-              ),
-            ),
-          );
-        }
-      } else {
-        _addDefaultLocations();
-        _mapController?.animateCamera(
-          CameraUpdate.newCameraPosition(
-            const CameraPosition(
-              target: LatLng(3.2163834, 101.7277707),
-              zoom: 17,
-            ),
-          ),
+        _mapController.move(
+          latlng.LatLng(location["lat"], location["lng"]),
+          19,
         );
       }
-    });
+    } else {
+      _addDefaultLocations();
+      _mapController.move(_initialCenter, 17);
+    }
   }
 
   Future<void> _loadEvents() async {
@@ -136,11 +117,8 @@ class _MapPageState extends State<MapPage> {
       final QuerySnapshot snapshot = await query.get();
       final DateTime now = DateTime.now();
 
-      setState(() {
-        _eventList.clear();
-        _markers.clear();
-        _addFilteredLocationMarker();
-      });
+      _eventList.clear();
+      _addFilteredLocationMarker();
 
       for (final doc in snapshot.docs) {
         final event = doc.data() as Map<String, dynamic>;
@@ -179,23 +157,15 @@ class _MapPageState extends State<MapPage> {
             'endDate': endDate,
           });
 
-          if (event.containsKey('latitude') && event.containsKey('longitude')) {
-            final double lat = event['latitude'];
-            final double lng = event['longitude'];
-
-            setState(() {
-              _markers.add(
-                Marker(
-                  markerId: MarkerId(doc.id),
-                  position: LatLng(lat, lng),
-                  infoWindow: InfoWindow(
-                    title: event['eventName'],
-                    snippet: 'Venue: $eventVenue\nDate: ${_formatDate(event['startDate'])}',
-                  ),
-                  icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
-                ),
-              );
-            });
+          final double? lat = _parseCoordinate(event['latitude']);
+          final double? lng = _parseCoordinate(event['longitude']);
+          if (lat != null && lng != null) {
+            _markers.add(_buildMarker(
+              point: latlng.LatLng(lat, lng),
+              color: Colors.red,
+              title: event['eventName'],
+              snippet: 'Venue: $eventVenue\nDate: ${_formatDate(event['startDate'])}',
+            ));
           }
         }
       }
@@ -206,6 +176,7 @@ class _MapPageState extends State<MapPage> {
         final DateTime dateB = b['startDate'] as DateTime;
         return dateA.compareTo(dateB);
       });
+      setState(() {});
 
     } catch (e) {
       print("❌ Error loading events: $e");
@@ -302,6 +273,43 @@ class _MapPageState extends State<MapPage> {
     } catch (e) {
       return dateString;
     }
+  }
+
+  double? _parseCoordinate(dynamic value) {
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value);
+    return null;
+  }
+
+  Marker _buildMarker({
+    required latlng.LatLng point,
+    required Color color,
+    String? title,
+    String? snippet,
+  }) {
+    return Marker(
+      point: point,
+      width: 40,
+      height: 40,
+      builder: (context) => GestureDetector(
+        onTap: () {
+          if (title == null) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                snippet == null ? title : '$title\n$snippet',
+              ),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        },
+        child: Icon(
+          Icons.location_on,
+          color: color,
+          size: 36,
+        ),
+      ),
+    );
   }
 
   Widget _buildEventDetail(IconData icon, String text) {
@@ -433,20 +441,20 @@ class _MapPageState extends State<MapPage> {
             children: [
               Expanded(
                 flex: 6,
-                child: GoogleMap(
-                  onMapCreated: (controller) {
-                    _mapController = controller;
-                    setState(() {});
-                  },
-                  initialCameraPosition: const CameraPosition(
-                    target: LatLng(3.2163834, 101.7277707),
+                child: FlutterMap(
+                  mapController: _mapController,
+                  options: MapOptions(
+                    center: _initialCenter,
                     zoom: 17,
                   ),
-                  markers: _markers,
-                  myLocationEnabled: true,
-                  myLocationButtonEnabled: true,
-                  zoomControlsEnabled: true,
-                  mapToolbarEnabled: true,
+                  children: [
+                    TileLayer(
+                      urlTemplate:
+                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      userAgentPackageName: 'com.tarumt.eventapp',
+                    ),
+                    MarkerLayer(markers: _markers),
+                  ],
                 ),
               ),
               Expanded(

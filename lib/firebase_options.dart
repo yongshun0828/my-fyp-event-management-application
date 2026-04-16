@@ -41,7 +41,7 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'USE YOUR OWN API KEY',
+    apiKey: 'AIzaSyAN28CcTSrdvFjBlWq0_npL-qKYwLCvJRY',
     appId: '1:1045321846037:web:1e8c1838d1583ceb39ed1c',
     messagingSenderId: '1045321846037',
     projectId: 'tarumt-event-management-app',
@@ -50,7 +50,7 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'USE YOUR OWN API KEY',
+    apiKey: 'AIzaSyAdGNhBjNO_QXQ_ZcOlmIbjthBGktmAE6U',
     appId: '1:1045321846037:android:22e695e92dea64b039ed1c',
     messagingSenderId: '1045321846037',
     projectId: 'tarumt-event-management-app',
@@ -58,7 +58,7 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'USE YOUR OWN API KEY',
+    apiKey: 'AIzaSyCtUWzWxOoyo-DP344fahdWmp6Fjky3R10',
     appId: '1:1045321846037:ios:ba9a2863fac94fc439ed1c',
     messagingSenderId: '1045321846037',
     projectId: 'tarumt-event-management-app',
